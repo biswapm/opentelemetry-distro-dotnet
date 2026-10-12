@@ -51,12 +51,24 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Scopes
                 spanDetails: spanDetails ?? new SpanDetails(ActivityKind.Client),
                 userDetails: userDetails)
         {
-            SetTagMaybe(GenAiOperationNameKey, details.OperationName.ToString());
+            SetTagMaybe(GenAiOperationNameKey, details.OperationName.ToString().ToLowerInvariant());
             SetTagMaybe(GenAiRequestModelKey, details.Model);
+            SetTagMaybe(GenAiResponseModelKey, details.ResponseModel);
             SetTagMaybe(GenAiProviderNameKey, details.ProviderName);
             SetTagMaybe(GenAiUsageInputTokensKey, details.InputTokens);
             SetTagMaybe(GenAiUsageOutputTokensKey, details.OutputTokens);
+            SetTagMaybe(GenAiUsageCacheReadInputTokensKey, details.CacheReadInputTokens);
+            SetTagMaybe(GenAiUsageCacheWriteInputTokensKey, details.CacheWriteInputTokens);
             SetTagMaybe(GenAiResponseFinishReasonsKey, details.FinishReasons);
+
+            if (details.Endpoint != null)
+            {
+                SetTagMaybe(ServerAddressKey, details.Endpoint.Host);
+                if (!details.Endpoint.IsDefaultPort)
+                {
+                    SetTagMaybe(ServerPortKey, details.Endpoint.Port);
+                }
+            }
 
             if (request?.InputContent != null)
             {
@@ -121,6 +133,30 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Scopes
         public void RecordOutputTokens(int outputTokens)
         {
             SetTagMaybe(GenAiUsageOutputTokensKey, outputTokens);
+        }
+
+        /// <summary>
+        /// Records the canonical model name returned by the provider.
+        /// </summary>
+        public void RecordResponseModel(string responseModel)
+        {
+            SetTagMaybe(GenAiResponseModelKey, responseModel);
+        }
+
+        /// <summary>
+        /// Records the number of input tokens read from cache.
+        /// </summary>
+        public void RecordCacheReadInputTokens(int cacheReadInputTokens)
+        {
+            SetTagMaybe(GenAiUsageCacheReadInputTokensKey, cacheReadInputTokens);
+        }
+
+        /// <summary>
+        /// Records the number of input tokens written to cache.
+        /// </summary>
+        public void RecordCacheWriteInputTokens(int cacheWriteInputTokens)
+        {
+            SetTagMaybe(GenAiUsageCacheWriteInputTokensKey, cacheWriteInputTokens);
         }
 
         /// <summary>

@@ -21,13 +21,21 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
         /// <param name="inputTokens">Optional count of tokens provided as input.</param>
         /// <param name="outputTokens">Optional count of tokens produced by the model.</param>
         /// <param name="finishReasons">Optional set of finish reasons supplied by the model.</param>
+        /// <param name="responseModel">Optional canonical model name returned by the provider.</param>
+        /// <param name="cacheReadInputTokens">Optional count of input tokens read from cache.</param>
+        /// <param name="cacheWriteInputTokens">Optional count of input tokens written to cache.</param>
+        /// <param name="endpoint">Optional model service endpoint. Only its host and non-default port are recorded.</param>
         public InferenceCallDetails(
             InferenceOperationType operationName,
             string model,
             string providerName,
             int? inputTokens = null,
             int? outputTokens = null,
-            string[]? finishReasons = null)
+            string[]? finishReasons = null,
+            string? responseModel = null,
+            int? cacheReadInputTokens = null,
+            int? cacheWriteInputTokens = null,
+            Uri? endpoint = null)
         {
             OperationName = operationName;
             Model = model;
@@ -35,6 +43,10 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
             InputTokens = inputTokens;
             OutputTokens = outputTokens;
             FinishReasons = finishReasons;
+            ResponseModel = responseModel;
+            CacheReadInputTokens = cacheReadInputTokens;
+            CacheWriteInputTokens = cacheWriteInputTokens;
+            Endpoint = endpoint;
         }
 
         /// <summary>
@@ -66,6 +78,26 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
         /// Gets the model-provided finish reasons, when provided.
         /// </summary>
         public string[]? FinishReasons { get; }
+
+        /// <summary>
+        /// Gets the canonical model name returned by the provider, when available.
+        /// </summary>
+        public string? ResponseModel { get; }
+
+        /// <summary>
+        /// Gets the number of input tokens read from cache, when available.
+        /// </summary>
+        public int? CacheReadInputTokens { get; }
+
+        /// <summary>
+        /// Gets the number of input tokens written to cache, when available.
+        /// </summary>
+        public int? CacheWriteInputTokens { get; }
+
+        /// <summary>
+        /// Gets the model service endpoint, when available.
+        /// </summary>
+        public Uri? Endpoint { get; }
 
         /// <summary>
         /// Deconstructs this instance into individual components.
@@ -105,7 +137,11 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
                    string.Equals(ProviderName, other.ProviderName, StringComparison.Ordinal) &&
                    InputTokens == other.InputTokens &&
                    OutputTokens == other.OutputTokens &&
-                   Equals(FinishReasons, other.FinishReasons);
+                   Equals(FinishReasons, other.FinishReasons) &&
+                   string.Equals(ResponseModel, other.ResponseModel, StringComparison.Ordinal) &&
+                   CacheReadInputTokens == other.CacheReadInputTokens &&
+                   CacheWriteInputTokens == other.CacheWriteInputTokens &&
+                   Equals(Endpoint, other.Endpoint);
         }
 
         /// <inheritdoc/>
@@ -126,6 +162,10 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
                 hash = (hash * 31) + (InputTokens?.GetHashCode() ?? 0);
                 hash = (hash * 31) + (OutputTokens?.GetHashCode() ?? 0);
                 hash = (hash * 31) + EqualityComparer<string[]?>.Default.GetHashCode(FinishReasons);
+                hash = (hash * 31) + (ResponseModel != null ? StringComparer.Ordinal.GetHashCode(ResponseModel) : 0);
+                hash = (hash * 31) + (CacheReadInputTokens?.GetHashCode() ?? 0);
+                hash = (hash * 31) + (CacheWriteInputTokens?.GetHashCode() ?? 0);
+                hash = (hash * 31) + (Endpoint?.GetHashCode() ?? 0);
                 return hash;
             }
         }
