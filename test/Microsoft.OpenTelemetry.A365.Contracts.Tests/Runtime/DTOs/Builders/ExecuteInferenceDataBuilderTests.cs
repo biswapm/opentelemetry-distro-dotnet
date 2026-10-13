@@ -29,6 +29,33 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tests.DTOs.Builders
             data.Attributes.Should().ContainKey(OpenTelemetryConstants.GenAiConversationIdKey).WhoseValue.Should().Be(conversationId);
         }
 
+        [DataTestMethod]
+        [DataRow(InferenceOperationType.Chat, "chat")]
+        [DataRow(InferenceOperationType.TextCompletion, "text_completion")]
+        [DataRow(InferenceOperationType.GenerateContent, "generate_content")]
+        public void Build_UsesCanonicalOperationName(InferenceOperationType operationName, string expected)
+        {
+            var details = new InferenceCallDetails(operationName, "gpt-4o", "openai");
+
+            var data = ExecuteInferenceDataBuilder.Build(details, new AgentDetails("agent-1"), "conv-operation");
+
+            data.Attributes[OpenTelemetryConstants.GenAiOperationNameKey].Should().Be(expected);
+        }
+
+        [TestMethod]
+        public void Constructor_WithRelativeEndpoint_ThrowsArgumentException()
+        {
+            Action act = () => new InferenceCallDetails(
+                InferenceOperationType.Chat,
+                "gpt-4o",
+                "openai",
+                endpoint: new Uri("/relative", UriKind.Relative));
+
+            act.Should().Throw<ArgumentException>()
+                .WithParameterName("endpoint")
+                .WithMessage("The endpoint must be an absolute URI with a host.*");
+        }
+
         [TestMethod]
         public void Build_WithChannel_IncludesChannelAttributes()
         {

@@ -37,6 +37,11 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
             int? cacheWriteInputTokens = null,
             Uri? endpoint = null)
         {
+            if (endpoint != null && (!endpoint.IsAbsoluteUri || string.IsNullOrEmpty(endpoint.Host)))
+            {
+                throw new ArgumentException("The endpoint must be an absolute URI with a host.", nameof(endpoint));
+            }
+
             OperationName = operationName;
             Model = model;
             ProviderName = providerName;

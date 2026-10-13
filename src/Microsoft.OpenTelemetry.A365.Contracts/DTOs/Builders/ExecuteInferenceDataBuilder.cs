@@ -111,7 +111,7 @@ namespace Microsoft.Agents.A365.Observability.Runtime.DTOs.Builders
             IDictionary<string, object?> attributes,
             InferenceCallDetails inferenceCallDetails)
         {
-            AddIfNotNull(attributes, GenAiOperationNameKey, inferenceCallDetails.OperationName.ToString().ToLowerInvariant());
+            AddIfNotNull(attributes, GenAiOperationNameKey, GetOperationName(inferenceCallDetails.OperationName));
             AddIfNotNull(attributes, GenAiRequestModelKey, inferenceCallDetails.Model);
             AddIfNotNull(attributes, GenAiResponseModelKey, inferenceCallDetails.ResponseModel);
             AddIfNotNull(attributes, GenAiProviderNameKey, inferenceCallDetails.ProviderName);
@@ -129,5 +129,14 @@ namespace Microsoft.Agents.A365.Observability.Runtime.DTOs.Builders
                 }
             }
         }
+
+        private static string GetOperationName(InferenceOperationType operationName) =>
+            operationName switch
+            {
+                InferenceOperationType.Chat => "chat",
+                InferenceOperationType.TextCompletion => "text_completion",
+                InferenceOperationType.GenerateContent => "generate_content",
+                _ => throw new ArgumentOutOfRangeException(nameof(operationName), operationName, "Unsupported inference operation."),
+            };
     }
 }

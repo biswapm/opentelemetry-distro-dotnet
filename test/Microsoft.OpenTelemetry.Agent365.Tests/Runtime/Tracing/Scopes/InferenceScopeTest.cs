@@ -45,6 +45,22 @@ public sealed class InferenceScopeTest : ActivityTest
         activity.GetTagItem(OpenTelemetryConstants.GenAiResponseFinishReasonsKey).Should().BeEquivalentTo(details.FinishReasons!);
     }
 
+    [DataTestMethod]
+    [DataRow(InferenceOperationType.Chat, "chat")]
+    [DataRow(InferenceOperationType.TextCompletion, "text_completion")]
+    [DataRow(InferenceOperationType.GenerateContent, "generate_content")]
+    public void Start_UsesCanonicalOperationName(InferenceOperationType operationName, string expected)
+    {
+        var details = new InferenceCallDetails(operationName, "gpt-4o", "openai");
+
+        var activity = ListenForActivity(() =>
+        {
+            using var scope = InferenceScope.Start(Util.GetDefaultRequest(), details, Util.GetAgentDetails());
+        });
+
+        activity.ShouldHaveTag(OpenTelemetryConstants.GenAiOperationNameKey, expected);
+    }
+
     [TestMethod]
     public void RecordInputTokens_SetsTag()
     {
