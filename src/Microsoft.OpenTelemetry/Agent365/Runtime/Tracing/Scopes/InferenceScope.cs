@@ -44,14 +44,13 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Scopes
 
         private InferenceScope(Request request, InferenceCallDetails details, AgentDetails agentDetails, UserDetails? userDetails, SpanDetails? spanDetails)
             : base(
-                operationName: details.OperationName.ToString(),
-                activityName: $"{details.OperationName} {details.Model}",
+                operationName: details.OperationNameValue,
+                activityName: $"{details.OperationNameValue} {details.Model}",
                 agentDetails: agentDetails,
                 request: request,
                 spanDetails: spanDetails ?? new SpanDetails(ActivityKind.Client),
                 userDetails: userDetails)
         {
-            SetTagMaybe(GenAiOperationNameKey, GetOperationName(details.OperationName));
             SetTagMaybe(GenAiRequestModelKey, details.Model);
             SetTagMaybe(GenAiResponseModelKey, details.ResponseModel);
             SetTagMaybe(GenAiProviderNameKey, details.ProviderName);
@@ -181,13 +180,5 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Scopes
             }
         }
 
-        private static string GetOperationName(InferenceOperationType operationName) =>
-            operationName switch
-            {
-                InferenceOperationType.Chat => "chat",
-                InferenceOperationType.TextCompletion => "text_completion",
-                InferenceOperationType.GenerateContent => "generate_content",
-                _ => throw new ArgumentOutOfRangeException(nameof(operationName), operationName, "Unsupported inference operation."),
-            };
     }
 }

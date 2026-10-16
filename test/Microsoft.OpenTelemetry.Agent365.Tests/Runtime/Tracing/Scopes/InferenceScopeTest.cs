@@ -4,6 +4,8 @@
 namespace Microsoft.Agents.A365.Observability.Tests.Tracing.Scopes;
 
 using System;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using FluentAssertions;
 using Microsoft.Agents.A365.Observability.Runtime.Tracing.Scopes;
 using Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts;
@@ -49,9 +51,30 @@ public sealed class InferenceScopeTest : ActivityTest
     [DataRow(InferenceOperationType.Chat, "chat")]
     [DataRow(InferenceOperationType.TextCompletion, "text_completion")]
     [DataRow(InferenceOperationType.GenerateContent, "generate_content")]
-    public void Start_UsesCanonicalOperationName(InferenceOperationType operationName, string expected)
+    [DataRow((InferenceOperationType)999, "chat")]
+    public void Start_UsesCanonicalOperationNameForSpanAndMetric(InferenceOperationType operationName, string expected)
     {
         var details = new InferenceCallDetails(operationName, "gpt-4o", "openai");
+        var metricOperations = new List<string?>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter.Name == SourceName && instrument.Name == GenAiClientOperationDurationMetricName)
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<double>((_, _, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                if (tag.Key == GenAiOperationNameKey)
+                {
+                    metricOperations.Add(tag.Value as string);
+                }
+            }
+        });
+        listener.Start();
 
         var activity = ListenForActivity(() =>
         {
@@ -59,6 +82,58 @@ public sealed class InferenceScopeTest : ActivityTest
         });
 
         activity.ShouldHaveTag(OpenTelemetryConstants.GenAiOperationNameKey, expected);
+        activity.DisplayName.Should().Be($"{expected} gpt-4o");
+        metricOperations.Should().Equal(expected);
+    }
+
+    [TestMethod]
+    public void Start_WithUnsupportedOperation_DoesNotThrowOrLeakActivity()
+    {
+        var details = new InferenceCallDetails((InferenceOperationType)999, "gpt-4o", "openai");
+        using var parent = new Activity("inference-parent").Start();
+        Activity? activity = null;
+        Action start = () => activity = ListenForActivity(() =>
+        {
+            using var scope = InferenceScope.Start(Util.GetDefaultRequest(), details, Util.GetAgentDetails());
+            Activity.Current.Should().NotBeSameAs(parent);
+        });
+
+        try
+        {
+            start.Should().NotThrow();
+            Activity.Current.Should().BeSameAs(parent);
+            activity!.GetTagItem(GenAiOperationNameKey).Should().Be("chat");
+        }
+        finally
+        {
+            if (Activity.Current != parent)
+            {
+                Activity.Current?.Stop();
+            }
+        }
+    }
+
+    [DataTestMethod]
+    [DataRow("/relative/private", UriKind.Relative)]
+    [DataRow("file:///private/deployment", UriKind.Absolute)]
+    public void Start_WithInvalidEndpoint_OmitsEndpointTags(string endpoint, UriKind kind)
+    {
+        var details = new InferenceCallDetails(
+            InferenceOperationType.Chat,
+            "gpt-4o",
+            "openai",
+            endpoint: new Uri(endpoint, kind));
+        var parent = Activity.Current;
+
+        var activity = ListenForActivity(() =>
+        {
+            using var scope = InferenceScope.Start(Util.GetDefaultRequest(), details, Util.GetAgentDetails());
+        });
+
+        Activity.Current.Should().BeSameAs(parent);
+        activity.GetTagItem(ServerAddressKey).Should().BeNull();
+        activity.GetTagItem(ServerPortKey).Should().BeNull();
+        activity.GetTagItem(GenAiRequestModelKey).Should().Be("gpt-4o");
     }
 
     [TestMethod]

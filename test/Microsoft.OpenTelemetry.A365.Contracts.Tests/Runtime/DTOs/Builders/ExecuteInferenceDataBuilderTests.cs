@@ -33,6 +33,7 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tests.DTOs.Builders
         [DataRow(InferenceOperationType.Chat, "chat")]
         [DataRow(InferenceOperationType.TextCompletion, "text_completion")]
         [DataRow(InferenceOperationType.GenerateContent, "generate_content")]
+        [DataRow((InferenceOperationType)999, "chat")]
         public void Build_UsesCanonicalOperationName(InferenceOperationType operationName, string expected)
         {
             var details = new InferenceCallDetails(operationName, "gpt-4o", "openai");
@@ -42,18 +43,22 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tests.DTOs.Builders
             data.Attributes[OpenTelemetryConstants.GenAiOperationNameKey].Should().Be(expected);
         }
 
-        [TestMethod]
-        public void Constructor_WithRelativeEndpoint_ThrowsArgumentException()
+        [DataTestMethod]
+        [DataRow("/relative/private", UriKind.Relative)]
+        [DataRow("file:///private/deployment", UriKind.Absolute)]
+        public void Build_WithInvalidEndpoint_OmitsEndpointAttributes(string endpoint, UriKind kind)
         {
-            Action act = () => new InferenceCallDetails(
+            var details = new InferenceCallDetails(
                 InferenceOperationType.Chat,
                 "gpt-4o",
                 "openai",
-                endpoint: new Uri("/relative", UriKind.Relative));
+                endpoint: new Uri(endpoint, kind));
 
-            act.Should().Throw<ArgumentException>()
-                .WithParameterName("endpoint")
-                .WithMessage("The endpoint must be an absolute URI with a host.*");
+            var data = ExecuteInferenceDataBuilder.Build(details, new AgentDetails("agent-1"), "conv-endpoint");
+
+            data.Attributes.Should().NotContainKey(OpenTelemetryConstants.ServerAddressKey);
+            data.Attributes.Should().NotContainKey(OpenTelemetryConstants.ServerPortKey);
+            data.Attributes[OpenTelemetryConstants.GenAiRequestModelKey].Should().Be("gpt-4o");
         }
 
         [TestMethod]

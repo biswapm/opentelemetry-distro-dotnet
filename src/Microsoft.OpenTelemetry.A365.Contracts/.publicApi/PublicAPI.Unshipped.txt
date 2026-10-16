@@ -20,6 +20,7 @@ Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts.InferenceCallDetai
 Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts.InferenceCallDetails.CacheWriteInputTokens.get -> int?
 Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts.InferenceCallDetails.Endpoint.get -> System.Uri?
 Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts.InferenceCallDetails.InferenceCallDetails(Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts.InferenceOperationType operationName, string! model, string! providerName, int? inputTokens = null, int? outputTokens = null, string![]? finishReasons = null, string? responseModel = null, int? cacheReadInputTokens = null, int? cacheWriteInputTokens = null, System.Uri? endpoint = null) -> void
+Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts.InferenceCallDetails.OperationNameValue.get -> string!
 Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts.InferenceCallDetails.ResponseModel.get -> string?
 const Microsoft.Agents.A365.Observability.Runtime.DTOs.SpanKindConstants.Client = "Client" -> string!
 const Microsoft.Agents.A365.Observability.Runtime.DTOs.SpanKindConstants.Consumer = "Consumer" -> string!

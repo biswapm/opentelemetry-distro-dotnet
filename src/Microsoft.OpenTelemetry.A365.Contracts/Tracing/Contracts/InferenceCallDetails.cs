@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
 {
@@ -24,7 +25,7 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
         /// <param name="responseModel">Optional canonical model name returned by the provider.</param>
         /// <param name="cacheReadInputTokens">Optional count of input tokens read from cache.</param>
         /// <param name="cacheWriteInputTokens">Optional count of input tokens written to cache.</param>
-        /// <param name="endpoint">Optional model service endpoint. Only its host and non-default port are recorded.</param>
+        /// <param name="endpoint">Optional model service endpoint. Only its host and non-default port are recorded. Relative or hostless endpoints are ignored.</param>
         public InferenceCallDetails(
             InferenceOperationType operationName,
             string model,
@@ -39,10 +40,12 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
         {
             if (endpoint != null && (!endpoint.IsAbsoluteUri || string.IsNullOrEmpty(endpoint.Host)))
             {
-                throw new ArgumentException("The endpoint must be an absolute URI with a host.", nameof(endpoint));
+                Trace.TraceWarning("The inference endpoint must be an absolute URI with a host; endpoint telemetry will be omitted.");
+                endpoint = null;
             }
 
             OperationName = operationName;
+            OperationNameValue = ResolveOperationName(operationName);
             Model = model;
             ProviderName = providerName;
             InputTokens = inputTokens;
@@ -58,6 +61,12 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
         /// Gets the operation name associated with the inference call.
         /// </summary>
         public InferenceOperationType OperationName { get; }
+
+        /// <summary>
+        /// Gets the canonical operation name shared by spans, metrics, and DTOs.
+        /// Undefined enum values default to <c>chat</c>.
+        /// </summary>
+        public string OperationNameValue { get; }
 
         /// <summary>
         /// Gets the language model name used by the call.
@@ -172,6 +181,22 @@ namespace Microsoft.Agents.A365.Observability.Runtime.Tracing.Contracts
                 hash = (hash * 31) + (CacheWriteInputTokens?.GetHashCode() ?? 0);
                 hash = (hash * 31) + (Endpoint?.GetHashCode() ?? 0);
                 return hash;
+            }
+        }
+
+        private static string ResolveOperationName(InferenceOperationType operationName)
+        {
+            switch (operationName)
+            {
+                case InferenceOperationType.Chat:
+                    return "chat";
+                case InferenceOperationType.TextCompletion:
+                    return "text_completion";
+                case InferenceOperationType.GenerateContent:
+                    return "generate_content";
+                default:
+                    Trace.TraceWarning("An undefined inference operation was supplied; operation telemetry will default to chat.");
+                    return "chat";
             }
         }
     }
